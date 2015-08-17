@@ -13,6 +13,91 @@ public class Hops {
     private double distance;
     private long duration;
     private String sName;
+    
+    private String aircraft;
+    private String airline;
+    private List<Codeshares> codeshares = new ArrayList<Codeshares>();
+   
+    private String flight;
+
+    public void setAircraft(String aircraft) {
+        this.aircraft = aircraft;
+    }
+
+    public void setAirline(String airline) {
+        this.airline = airline;
+    }
+
+    public void setCodeshares(List<Codeshares> codeshares) {
+        this.codeshares = codeshares;
+    }
+
+    public void setFlight(String flight) {
+        this.flight = flight;
+    }
+
+    public void settTerminal(String tTerminal) {
+        this.tTerminal = tTerminal;
+    }
+
+    public String getAircraft() {
+        return aircraft;
+    }
+
+    public String getAirline() {
+        return airline;
+    }
+
+    public List<Codeshares> getCodeshares() {
+        return codeshares;
+    }
+
+    public String getFlight() {
+        return flight;
+    }
+
+    public String gettTerminal() {
+        return tTerminal;
+    }
+     private String tTerminal;
+    
+    private String sCode;
+
+    public void setsCode(String sCode) {
+        this.sCode = sCode;
+    }
+
+    public void setsTime(String sTime) {
+        this.sTime = sTime;
+    }
+
+    public void settCode(String tCode) {
+        this.tCode = tCode;
+    }
+
+    public void settTime(String tTime) {
+        this.tTime = tTime;
+    }
+
+    public String getsCode() {
+        return sCode;
+    }
+
+    public String getsTime() {
+        return sTime;
+    }
+
+    public String gettCode() {
+        return tCode;
+    }
+
+    public String gettTime() {
+        return tTime;
+    }
+    private String sTime;
+    private String tCode;
+    
+    private String tTime;
     private String sPos;
     private String tName;
     private String tPos;
