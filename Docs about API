@@ -1,0 +1,697 @@
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+Project Details 
+•         Project(s) involved: RB7ST2TM
+•         H/W Platform: NA	
+•         S/W Environment: Android Studio with JRE
+•         Application Type: Listview, Json Data 	
+•         Project Type: NA
+Target readers 
+Android developers, Java
+Keywords 
+ListView , JSON , Custom Adapter , Android
+
+
+
+ListView
+ListView is a View group which displays a list of scrollable items. It’s the most widely used UI element when it comes to displaying a collection of data.
+
+
+
+
+Parts of list view display:
+•	View – User interface
+•	Adapter – The bridge 
+•	Data Source – Data/Data model
+
+For a custom list view:
+•	View will be populated by adapter extracting data from the Data Source. The adapter will be responsible for assigning the custom layout that needed for ListView. View holders will be used to make the performance better.
+How does it work?
+We set adapters for the ListView which gets the data as an ArrayList. The ListView uses the recycler to keep adding views below or above. Recycler adds the active views to recyclable pool once it gets off the screen. So at a particular point of time there are only few views in memory even if adapter has hundreds of item.
+In this process of scrolling the code might call findViewById() frequently, which will in turn slow the performance. Even if the Adapter returns inflated view for recycling, the code still needs to look up the element and update them. To avoid all these “View Holder” design pattern is used. A ViewHolder object will store each component view inside the tag field of the Layout, so they can be immediately accessed without search.
+ViewHolder will be a lightweight inner class that will hold references to all inner views from a row. It is stored as a tag in the row’s view after inflating it. We will get to know about it more as we build the application.
+
+
+
+Let’s start with simple API call. By the end of this document we would be able to –
+•	Know ListView
+•	Design custom ListView
+•	Work with View Holder 
+•	De-serialize JSON with GSON library.
+
+
+Before we start let me brief on JSON-
+JSON, JavaScript Object notation is a format that uses human readable text to transfer data as property value pairs.
+In our scenario we would be getting JSON from API that is called from the application. We will de-serialize the same and display the data to user in a custom ListView.
+
+API - http://api.railwayapi.com/live/train/<train number>/doj/<yyyymmdd>apikey/<apikey>/
+Above is API from railwayapi.com, which takes train number and date of journey as parameter. This can be used with httpclient/httpurlconnection to get http response as the JSON shown below. This document is focused on displaying this JSON in ListView using custom adapter, hence HTTP get request is out of scope. 
+JSON-
+"{ \"train_number\": \"12345\", \"response_code\": 200, \"route\": [ { \"actdep\": \"03:50 PM\", \"station\": \"Howrah Jn (HWH)\", \"no\": 1, \"actarr\": \"Source\", \"status\": \"Source\", \"schdep\": \"03:50 PM\", \"scharr\": \"Source\" }, { \"actdep\": \"05:20 PM\", \"station\": \"Barddhaman Jn (BWN)\", \"no\": 2, \"actarr\": \"05:15 PM\", \"status\": \"0 hour 11 min late\", \"schdep\": \"05:06 PM\", \"scharr\": \"05:04 PM\" }, { \"actdep\": \"06:20 PM\", \"station\": \"Bolpur S Niktn (BHP)\", \"no\": 3, \"actarr\": \"06:15 PM\", \"status\": \"0 hour 22 min late\", \"schdep\": \"05:58 PM\", \"scharr\": \"05:53 PM\" }, { \"actdep\": \"07:23 PM\", \"station\": \"Rampur Hat (RPH)\", \"no\": 4, \"actarr\": \"07:22 PM\", \"status\": \"0 hour 25 min late\", \"schdep\": \"06:59 PM\", \"scharr\": \"06:57 PM\" }, { \"actdep\": \"09:09 PM\", \"station\": \"New Farakka Jn (NFK)\", \"no\": 5, \"actarr\": \"09:08 PM\", \"status\": \"0 hour 18 min late\", \"schdep\": \"08:52 PM\", \"scharr\": \"08:50 PM\" }, { \"actdep\": \"09:45 PM\", \"station\": \"Malda Town (MLDT)\", \"no\": 6, \"actarr\": \"09:40 PM\", \"status\": \"0 hour 10 min late\", \"schdep\": \"09:45 PM\", \"scharr\": \"09:30 PM\" }, { \"actdep\": \"12:14 AM\", \"station\": \"Kishanganj (KNE)\" \"total\": 13, \"position\": \" Saraighat Express is Destination Reached and is delayed by 01 Hr 45 Mins when it arrived at Guwahati (GHY) at 11:15 AM (105 Mins. Late)\" }";
+        
+
+To start with the application we will use GSON library. This is a free library to work with JSON, advantages:
+•	Cleaner 
+•	Easier to de-serialize JSON with it.
+
+Let’s start with creating a new project in Android Studio-
+ 
+ -
+ 
+ 
+
+ 
+Your project structure will look somewhat like this –
+ 
+
+
+We need a class structure to hold de serialized JSON data. Add a folder to the project name it as “Model”. Inside the folder add a class. The class should have a relevant structure to hold JSON data. To do that we have many web applications available online which could convert JSON to POJO class structure. Below is the class structure in Model folder for the JSON received earlier from our API.
+
+
+Model Classes–
+Running.Java- The initial entry point of JSON to POJO:
+We have information like trainnumber and List of type Route class(definded below) which will be used later. Respective getter and setter methods are also present.
+
+package com.ishan387.models;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+
+public class Running {
+
+    private String train_number;
+    private long response_code;
+    private List<Route> route = new ArrayList<Route>();
+    private long total;
+    private Object position;
+    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
+
+    /**
+     * 
+     * @return
+     *     The trainNumber
+     */
+    public String getTrain_number() {
+        return train_number;
+    }
+
+    /**
+     * 
+     * @param train_number
+     *     The train_number
+     */
+    public void setTrain_number(String train_number) {
+        this.train_number = train_number;
+    }
+
+    /**
+     * 
+     * @return
+     *     The responseCode
+     */
+    public long getResponse_code() {
+        return response_code;
+    }
+
+    /**
+     * 
+     * @param response_code
+     *     The response_code
+     */
+    public void setResponse_code(long response_code) {
+        this.response_code = response_code;
+    }
+
+    /**
+     * 
+     * @return
+     *     The route
+     */
+    public List<Route> getRoute() {
+        return route;
+    }
+
+    /**
+     * 
+     * @param route
+     *     The route
+     */
+    public void setRoute(List<Route> route) {
+        this.route = route;
+    }
+
+    /**
+     * 
+     * @return
+     *     The total
+     */
+    public long getTotal() {
+        return total;
+    }
+
+    /**
+     * 
+     * @param total
+     *     The total
+     */
+    public void setTotal(long total) {
+        this.total = total;
+    }
+
+    /**
+     * 
+     * @return
+     *     The position
+     */
+    public Object getPosition() {
+        return position;
+    }
+
+    /**
+     * 
+     * @param position
+     *     The position
+     */
+    public void setPosition(Object position) {
+        this.position = position;
+    }
+
+    public Map<String, Object> getAdditionalProperties() {
+        return this.additionalProperties;
+    }
+
+    public void setAdditionalProperty(String name, Object value) {
+        this.additionalProperties.put(name, value);
+    }
+
+}
+
+Route.Java- To hold the route information:
+Now each route from the list returned by running class will have –
+Station , departure/arrival timings, status etc. Respective getter and setter methods as well.
+package com.ishan387.models;
+
+import java.util.HashMap;
+import java.util.Map;
+
+public class Route {
+
+    private String actdep;
+    private String station;
+    private long no;
+    private String actarr;
+    private String status;
+    private String schdep;
+    private String scharr;
+    private Map<String, Object> additionalProperties = new HashMap<String, Object>();
+
+    /**
+     * 
+     * @return
+     *     The actdep
+     */
+    public String getActdep() {
+        return actdep;
+    }
+
+    /**
+     * 
+     * @param actdep
+     *     The actdep
+     */
+    public void setActdep(String actdep) {
+        this.actdep = actdep;
+    }
+
+    /**
+     * 
+     * @return
+     *     The station
+     */
+    public String getStation() {
+        return station;
+    }
+
+    /**
+     * 
+     * @param station
+     *     The station
+     */
+    public void setStation(String station) {
+        this.station = station;
+    }
+
+    /**
+     * 
+     * @return
+     *     The no
+     */
+    public long getNo() {
+        return no;
+    }
+
+    /**
+     * 
+     * @param no
+     *     The no
+     */
+    public void setNo(long no) {
+        this.no = no;
+    }
+
+    /**
+     * 
+     * @return
+     *     The actarr
+     */
+    public String getActarr() {
+        return actarr;
+    }
+
+    /**
+     * 
+     * @param actarr
+     *     The actarr
+     */
+    public void setActarr(String actarr) {
+        this.actarr = actarr;
+    }
+
+    /**
+     * 
+     * @return
+     *     The status
+     */
+    public String getStatus() {
+        return status;
+    }
+
+    /**
+     * 
+     * @param status
+     *     The status
+     */
+    public void setStatus(String status) {
+        this.status = status;
+    }
+
+    /**
+     * 
+     * @return
+     *     The schdep
+     */
+    public String getSchdep() {
+        return schdep;
+    }
+
+    /**
+     * 
+     * @param schdep
+     *     The schdep
+     */
+    public void setSchdep(String schdep) {
+        this.schdep = schdep;
+    }
+
+    /**
+     * 
+     * @return
+     *     The scharr
+     */
+    public String getScharr() {
+        return scharr;
+    }
+
+    /**
+     * 
+     * @param scharr
+     *     The scharr
+     */
+    public void setScharr(String scharr) {
+        this.scharr = scharr;
+    }
+
+    public Map<String, Object> getAdditionalProperties() {
+        return this.additionalProperties;
+    }
+
+    public void setAdditionalProperty(String name, Object value) {
+        this.additionalProperties.put(name, value);
+    }
+
+}
+
+
+To de-serialize the JSON and feed it in to Model class we will be needing GSON library which has functions to do the same. We can download the .jar from GSON website and include it as library in our project.
+
+
+ 
+HttpAct class-
+
+package com.ishan387.syt;
+
+import android.app.Activity;
+import android.app.ProgressDialog;
+import android.content.Context;
+import android.os.Bundle;
+import android.view.LayoutInflater;
+import android.view.Menu;
+import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.ArrayAdapter;
+import android.widget.ListView;
+import android.widget.TextView;
+import com.google.gson.Gson;
+import com.ishan387.models.Route;
+import com.ishan387.models.Running;
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.UnsupportedEncodingException;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.List;
+
+public class HttpAct extends Activity {
+
+       
+    String u ="http://api.railwayapi.com/live/train/";
+    static final String apikey ="thnxp9240";
+    static  final String zero ="0";
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_http);
+
+       
+        String newString,d;
+
+
+      
+        String testresult= "{ \"route\": [ { \"no\": 1, \"station\": \"Howrah Jn (HWH)\", \"status\": \"Source\", \"actarr\": \"Source\", \"scharr\": \"Source\", \"actdep\": \"03:50 PM\", \"schdep\": \"03:50 PM\" }, { \"no\": 2, \"station\": \"Barddhaman Jn (BWN)\", \"status\": \"0 hour 6 min before\", \"actarr\": \"04:58 PM\", \"scharr\": \"05:04 PM\", \"actdep\": \"05:06 PM\", \"schdep\": \"05:06 PM\" }, { \"no\": 3, \"station\": \"Bolpur S Niktn (BHP)\", \"status\": \"0 hour 2 min late\", \"actarr\": \"05:55 PM\", \"scharr\": \"05:53 PM\", \"actdep\": \"06:00 PM\", \"schdep\": \"05:58 PM\" }, { \"no\": 4, \"station\": \"Rampur Hat (RPH)\", \"status\": \"0 hour 1 min late\", \"actarr\": \"06:58 PM\", \"scharr\": \"06:57 PM\", \"actdep\": \"06:59 PM\", \"schdep\": \"06:59 PM\" }, { \"no\": 5, \"station\": \"New Farakka Jn (NFK)\", \"status\": \"0 hour 14 min before\", \"actarr\": \"08:36 PM\", \"scharr\": \"08:50 PM\", \"actdep\": \"08:52 PM\", \"schdep\": \"08:52 PM\" }, { \"no\": 6, \"station\": \"Malda Town (MLDT)\", \"status\": \"No Delay\", \"actarr\": \"09:30 PM\", \"scharr\": \"09:30 PM\", \"actdep\": \"09:45 PM\", \"schdep\": \"09:45 PM\" }, { \"no\": 7, \"station\": \"Kishanganj (KNE)\", \"status\": \"23 hour 10 min before\", \"actarr\": \"12:28 AM\", \"scharr\": \"11:38 PM\", \"actdep\": \"12:30 AM\", \"schdep\": \"11:40 PM\" }, ], \"total\": 13, \"response_code\": 200, \"train_number\": \"12345\", \"position\": \" Saraighat Express is Destination Reached and there is No Delay when it arrived at Guwahati (GHY) at 09:30 AM (On Time)\" }";
+       
+
+ Gson gson = new Gson();
+        Running rs = gson.fromJson(testresult,
+                Running.class);*/
+
+         if (rs != null) {
+          setDisplayList(rs);
+
+
+        }
+        	     
+
+
+    }
+
+    private void setDisplayList(Running rs) {
+
+
+        ArrayList<Route> r = new ArrayList<Route>();
+        List<Route> rl = new ArrayList<>();
+        rl = rs.getRoute();
+
+        for(int i = 0; i<rs.getTotal();i++){
+            r.add(rl.get(i));
+        }
+
+        MyCustomAdapter dataAdapter = new MyCustomAdapter(this,
+                R.layout.run, r);
+        ListView listView = (ListView) findViewById(R.id.listView1);
+        // Assign adapter to ListView
+        listView.setAdapter(dataAdapter);
+
+    }
+
+
+    private class MyCustomAdapter extends ArrayAdapter<Route> {
+
+        private ArrayList<Route> routeList;
+
+        public MyCustomAdapter(Context context, int textViewResourceId,
+                               ArrayList<Route> cList) {
+            super(context, textViewResourceId, cList);
+            this. routeList = new ArrayList<Route>();
+            this. routeList.addAll(cList);
+        }
+
+        private class ViewHolder {
+            TextView station;
+            TextView Accarival;
+            TextView contAccDeparture;
+            TextView status;
+            TextView SchArrival;
+            TextView SchDeparture;
+        }
+
+        
+
+		@Override
+        public View getView(int position, View convertView, ViewGroup parent) {
+
+            ViewHolder holder = null;
+           if (convertView == null) {
+
+                LayoutInflater vi = (LayoutInflater)getSystemService(
+                        Context.LAYOUT_INFLATER_SERVICE);
+                convertView = vi.inflate(R.layout.run, null);
+
+                holder = new ViewHolder();
+                holder.station = (TextView) convertView.findViewById(R.id.station);
+                holder.Accarival = (TextView) convertView.findViewById(R.id.name);
+                holder.contAccDeparture = (TextView) convertView.findViewById(R.id.continent);
+                holder.status = (TextView) convertView.findViewById(R.id.region);
+                holder.SchArrival = (TextView) convertView.findViewById(R.id.textview5);
+                holder.SchDeparture = (TextView) convertView.findViewById(R.id.textview6);
+
+                convertView.setTag(holder);
+
+            } else {
+                holder = (ViewHolder) convertView.getTag();
+            }
+
+            Route c = routeList.get(position);
+            holder.station.setText(c.getStation());
+            holder.Accarival.setText(c.getActarr());
+            holder.contAccDeparture.setText(c.getActdep());
+            holder.status.setText(c.getStatus());
+            holder.SchArrival.setText(c.getScharr());
+            holder.SchDeparture.setText(country.getSchdep());
+
+            return convertView;
+
+        }
+    }
+
+}
+
+
+
+
+
+
+Breaking the Code-
+•	Section 1 
+Once the JSON is downloaded as response from api call , in our case it’s the testresult string here. We ask the gson library to break the testresult using fromjson method and put it in Running.class. Running class is the model class structure which has all the required variables and getter/setter methods. Now rs (object of running class) has all the data that came with testresult. We call a method setDisplayList with passing rs object.
+
+•	Section 2
+In setDisplayList we create an list of type Route and add all the list elements of type route from rs object. The rs object as getter method to get the list of list which can be seen the model class.
+Then we create an adapter from custom adapter class which will be covered in next section. We pass the adapter layout(that’s each element row in the list) and the list. As the control returns back to setDisplayList again we set the adapter to ListView.
+
+
+•	Section 3
+This is the constructor for Customadapter class.
+
+•	Section 4
+This is ViewHolder class which holds references to all the inner views from a row. That’s all the element in a single item of listview.
+
+•	Section 5
+This is the part where the getView function inflates the run.xml layout and gives the textview’s their id’s from it for the first run. Run.xml is the layout for each item in a listview. We have here 6 textviews from ViewHolder class. So each item in our list view will have 6 elements with value from json inside them.
+
+•	 Section 6
+Once the textview get their id’s, this section set the texts of all the elements using getter methods of Route class. Station textview is set to c.getstation() which returns the station name.
+Likewise for rest of the text views and returns the view.
+
+View- 
+
+httpact
+
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context="com.ishan387.syt.HttpAct"
+    android:orientation="vertical"
+    android:background="@color/back">
+
+
+    <ListView android:id="@+id/listView1" android:layout_width="match_parent"
+        android:layout_height="fill_parent"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentStart="true" />
+
+
+</LinearLayout>
+
+Breaking the XML – 
+Section 1:
+This is the result page where we have given a ListView inside LinearLayout to show the results. Now each Item as you see in the list will be defined by Run.xml. The layout of the same is shown in Run xml section.
+Here how it looks – 
+ 
+
+Run xml –
+
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="fill_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:padding="6dip"
+    android:background="@color/black">
+
+    <!-- Station tag-->
+    <TextView
+        android:id="@+id/textView1"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentTop="true"
+        android:text="Station: "
+        />
+
+    <!-- actual arrival tag-->
+    <TextView
+        android:id="@+id/textView2"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/textView1"
+        android:layout_below="@+id/textView1"
+        android:text="Actual Arrival: "
+        />
+    <TextView
+        android:id="@+id/textView3"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/textView2"
+        android:layout_below="@+id/textView2"
+        android:text="Actual Departure: "
+        />
+    <TextView
+        android:id="@+id/scharr"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/textView3"
+        android:layout_below="@+id/textView3"
+
+        android:text="Scheduled Arrival: "
+        />
+    <TextView
+        android:id="@+id/schdep"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignLeft="@+id/scharr"
+        android:layout_below="@+id/scharr"
+
+        android:text="Scheduled Departure: "
+        />
+
+    <TextView
+        android:id="@+id/region"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:layout_below="@+id/textview6"
+        android:layout_alignLeft="@+id/station"
+        android:layout_marginLeft="10dp"
+        android:textAllCaps="true"
+
+        android:text="stat" />
+    <TextView
+        android:id="@+id/station"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+       android:layout_toRightOf="@+id/textView1"
+        android:layout_marginLeft="85dp"
+        android:text="blr junction"
+        android:textStyle="bold"
+        android:textAllCaps="true"
+        android:textColor="@color/orange"/>
+
+    <TextView
+        android:id="@+id/continent"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignBaseline="@+id/textView3"
+        android:layout_alignBottom="@+id/textView3"
+        android:layout_toRightOf="@+id/textView3"
+        android:layout_alignLeft="@+id/station"
+        android:layout_marginLeft="10dp"
+        android:text="actual dept" />
+
+
+
+    <TextView
+        android:id="@+id/name"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/station"
+        android:layout_toRightOf="@+id/textView2"
+        android:layout_alignBaseline="@+id/textView2"
+        android:layout_alignLeft="@+id/station"
+        android:layout_marginLeft="10dp"
+
+        android:text="acct ariv" />
+
+
+
+    <TextView
+        android:id="@+id/textview5"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+        android:layout_below="@+id/continent"
+        android:layout_toRightOf="@+id/scharr"
+        android:layout_alignLeft="@+id/station"
+        android:layout_marginLeft="10dp"
+        android:text="scc arival" />
+
+
+    <TextView
+        android:id="@+id/textview6"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_below="@+id/textview5"
+        android:layout_toRightOf="@+id/continent"
+        android:layout_alignLeft="@+id/station"
+        android:layout_marginLeft="10dp"
+        android:text="sch dep" />
+
+</RelativeLayout>
+
+
+Breaking the XML – 
+•	Section 1
+This is the layout for each row in the ListView. Elements in each row will be arranged according to this layout. This layout is set to each row in ConvertView section 5 of HttPAct class. A single row of the list view will have TextView to hold data from json arranged in a Relative Layout as shown below.
+
+Here how it looks-
+ 
+Run the application in emulator or phone that is connected to Android Studio, you will get your application working. The result page will have all the info in the ListView with a smooth scrolling as we have used ViewHolder.
+  
+ Reference:Na
+
